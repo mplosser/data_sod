@@ -248,7 +248,7 @@ def download_year_bulk(year, output_dir, delay=1.0):
     Returns:
         True if successful, False otherwise
     """
-    url = f'https://www.fdic.gov/foia/sod/sod-{year}.zip'
+    url = f'https://www.fdic.gov/foia/sod/soddata/csv/sod-{year}.zip'
     filename = f'sod-{year}.zip'
     output_path = Path(output_dir) / filename
 
