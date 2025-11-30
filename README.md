@@ -47,13 +47,13 @@ python download.py --start-year 2020 --end-year 2025 \
 ```bash
 # Extract and parse with parallelization (recommended)
 python parse.py \
-    --input-dir /data/raw \
-    --output-dir /data/processed
+    --input-dir data/raw \
+    --output-dir data/processed
 
 # Limit workers for low-memory systems
 python parse.py \
-    --input-dir /data/raw \
-    --output-dir /data/processed \
+    --input-dir data/raw \
+    --output-dir data/processed \
     --workers 4
 ```
 
@@ -61,11 +61,11 @@ python parse.py \
 
 ```bash
 # Generate summary
-python summarize.py --input-dir /data/processed
+python summarize.py --input-dir data/processed
 
 # Save summary to CSV
 python summarize.py \
-    --input-dir /data/processed \
+    --input-dir data/processed \
     --output-csv sod_raw_summary.csv
 ```
 
@@ -149,19 +149,19 @@ python download.py --start-year 1994 --end-year 2025 \
 ```bash
 # Default parallel processing (all CPU cores)
 python parse.py \
-    --input-dir /data/raw \
-    --output-dir /data/raw_yearly
+    --input-dir data/raw \
+    --output-dir data/processed
 
 # Limit to 4 workers
-python extract_raw_sod.py \
-    --input-dir /data/sod/raw \
-    --output-dir /data/sod/raw_yearly \
+python parse.py \
+    --input-dir data/raw \
+    --output-dir data/processed \
     --workers 4
 
 # Disable parallelization
-python extract_raw_sod.py \
-    --input-dir /data/sod/raw \
-    --output-dir /data/sod/raw_yearly \
+python parse.py \
+    --input-dir data/raw \
+    --output-dir data/processed \
     --no-parallel
 ```
 

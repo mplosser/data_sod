@@ -7,15 +7,15 @@ This script consolidates multiple download methods into a single interface:
 
 Usage:
     # Download all available years
-    python download_sod.py --start-year 1987 --end-year 2025
+    python download.py --start-year 1987 --end-year 2025
 
     # Download with API key (recommended for 1994+)
-    python download_sod.py --start-year 1994 --end-year 2025 \\
+    python download.py --start-year 1994 --end-year 2025 \
         --api-key YOUR_API_KEY
 
     # Or use environment variable
     export FDIC_API_KEY=YOUR_API_KEY
-    python download_sod.py --start-year 1994 --end-year 2025
+    python download.py --start-year 1994 --end-year 2025
 """
 
 import requests
@@ -29,8 +29,8 @@ from tqdm import tqdm
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# Default output directory 
-DEFAULT_OUTPUT_DIR = '/data/raw'
+# Default output directory (relative to repository root)
+DEFAULT_OUTPUT_DIR = 'data/raw'
 
 # FDIC API configuration
 FDIC_API_BASE_URL = "https://api.fdic.gov/banks/sod"
@@ -61,8 +61,7 @@ def create_session():
 
 
 def download_file(url, output_path, delay=1.0):
-    """
-    Download a file with progress bar and retry logic.
+    """Download a file with progress bar and retry logic.
 
     Args:
         url: URL to download from
@@ -90,11 +89,15 @@ def download_file(url, output_path, delay=1.0):
                 with tqdm(total=total_size, unit='B', unit_scale=True,
                          desc=output_path.name, leave=False) as pbar:
                     for chunk in response.iter_content(chunk_size=8192):
+                        if not chunk:
+                            continue
                         size = f.write(chunk)
                         pbar.update(size)
             else:
                 # No content-length header
                 for chunk in response.iter_content(chunk_size=8192):
+                    if not chunk:
+                        continue
                     f.write(chunk)
 
         return True
@@ -164,8 +167,7 @@ def download_year_api_chunk(session, year, offset, limit, api_key=None):
 
 
 def download_year_api(session, year, output_dir, api_key=None, delay=0.5):
-    """
-    Download SOD data for a year using the FDIC API.
+    """Download SOD data for a year using the FDIC API.
 
     Args:
         session: Requests session
@@ -236,8 +238,7 @@ def download_year_api(session, year, output_dir, api_key=None, delay=0.5):
 
 
 def download_year_bulk(year, output_dir, delay=1.0):
-    """
-    Download SOD data for 1987-1993 via FDIC FOIA bulk download.
+    """Download SOD data for 1987-1993 via FDIC FOIA bulk download.
 
     Args:
         year: Year to download (1987-1993)
@@ -275,15 +276,15 @@ def main():
         epilog="""
 Examples:
   # Download all available years
-  python download_sod.py --start-year 1987 --end-year 2025
+  python download.py --start-year 1987 --end-year 2025
 
   # Download with API key (recommended for 1994+)
-  python download_sod.py --start-year 1994 --end-year 2025 \\
+  python download.py --start-year 1994 --end-year 2025 \
       --api-key YOUR_API_KEY
 
   # Use environment variable for API key
   export FDIC_API_KEY=YOUR_API_KEY
-  python download_sod.py --start-year 1994 --end-year 2025
+  python download.py --start-year 1994 --end-year 2025
 
 Data Sources:
   1987-1993: FDIC FOIA bulk download (ZIP files, ~7 MB each)
@@ -402,13 +403,10 @@ Notes:
     print("NEXT STEPS")
     print("="*80)
     print("\n1. Extract and convert to parquet:")
-    print(f"   python extract_raw_sod.py \\")
-    print(f"       --input-dir {args.output_dir} \\")
-    print(f"       --output-dir ../../data/sod/raw_yearly")
+    print(f"   python parse.py \\\n        --input-dir {args.output_dir} \\\n        --output-dir data/processed")
 
     print("\n2. Verify data:")
-    print(f"   python summarize_raw_data.py \\")
-    print(f"       --input-dir ../../data/sod/raw_yearly")
+    print(f"   python summarize.py \\\n        --input-dir data/processed")
 
     return 0 if not failed else 1
 

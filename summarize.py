@@ -10,17 +10,21 @@ This script scans all SOD parquet files and generates a summary showing:
 
 Usage:
     # Summarize with default parallelization
-    python summarize_raw_data.py --input-dir ../../data/sod/raw_annual
+    python summarize.py --input-dir data/processed
 
-    # Save summary to CSV
-    python summarize_raw_data.py \\
-        --input-dir ../../data/sod/raw_annual \\
-        --output-csv sod_summary.csv
+        # Save summary to CSV
+        python summarize.py \\
+            --input-dir data/processed \\
+            --output-csv sod_summary.csv
 
     # Disable parallelization
-    python summarize_raw_data.py \\
+    python summarize.py \\
         --input-dir ../../data/sod/raw_annual \\
         --no-parallel
+        # Disable parallelization (for low-memory systems)
+        python summarize.py \\
+            --input-dir data/processed \\
+            --no-parallel
 """
 
 import pandas as pd
@@ -82,16 +86,18 @@ def main():
         epilog="""
 Examples:
   # Generate summary
-  python summarize_raw_data.py --input-dir ../../data/sod/raw_annual
+    python summarize.py --input-dir data/processed
+    # Generate summary
+    python summarize.py --input-dir data/processed
 
   # Save to CSV
-  python summarize_raw_data.py \\
-      --input-dir ../../data/sod/raw_annual \\
+  python summarize.py \\
+      --input-dir data/processed \\
       --output-csv sod_summary.csv
 
   # Disable parallelization (for low-memory systems)
-  python summarize_raw_data.py \\
-      --input-dir ../../data/sod/raw_annual \\
+  python summarize.py \\
+      --input-dir data/processed \\
       --no-parallel
         """
     )
@@ -99,8 +105,8 @@ Examples:
     parser.add_argument(
         '--input-dir',
         type=str,
-        required=True,
-        help='Directory containing parquet files'
+        default='data/processed',
+        help='Directory containing parquet files (default: data/processed)'
     )
 
     parser.add_argument(

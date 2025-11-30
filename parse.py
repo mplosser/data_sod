@@ -11,20 +11,20 @@ Handles multiple file formats:
 
 Usage:
     # Extract all files with default parallelization
-    python extract_raw_sod.py \\
-        --input-dir ../../data/sod/bulk_downloads \\
-        --output-dir ../../data/sod/raw_annual
+    python parse.py \\
+        --input-dir data/raw \\
+        --output-dir data/processed
 
     # Specify number of workers
-    python extract_raw_sod.py \\
-        --input-dir ../../data/sod/bulk_downloads \\
-        --output-dir ../../data/sod/raw_annual \\
+    python parse.py \\
+        --input-dir data/raw \\
+        --output-dir data/processed \\
         --workers 8
 
     # Disable parallelization
-    python extract_raw_sod.py \\
-        --input-dir ../../data/sod/bulk_downloads \\
-        --output-dir ../../data/sod/raw_annual \\
+    python parse.py \\
+        --input-dir data/raw \\
+        --output-dir data/processed \\
         --no-parallel
 """
 
@@ -214,20 +214,20 @@ def main():
         epilog="""
 Examples:
   # Extract with default parallelization (all CPUs)
-  python extract_raw_sod.py \\
-      --input-dir ../../data/sod/bulk_downloads \\
-      --output-dir ../../data/sod/raw_annual
+  python parse.py \\
+      --input-dir data/raw \\
+      --output-dir data/processed
 
   # Limit to 4 workers
-  python extract_raw_sod.py \\
-      --input-dir ../../data/sod/bulk_downloads \\
-      --output-dir ../../data/sod/raw_annual \\
+  python parse.py \\
+      --input-dir data/raw \\
+      --output-dir data/processed \\
       --workers 4
 
   # Disable parallelization
-  python extract_raw_sod.py \\
-      --input-dir ../../data/sod/bulk_downloads \\
-      --output-dir ../../data/sod/raw_annual \\
+  python parse.py \\
+      --input-dir data/raw \\
+      --output-dir data/processed \\
       --no-parallel
 
 Output Format:
@@ -240,15 +240,15 @@ Output Format:
     parser.add_argument(
         '--input-dir',
         type=str,
-        required=True,
-        help='Directory containing downloaded ZIP/CSV files'
+        default='data/raw',
+        help='Directory containing downloaded ZIP/CSV files (default: data/raw)'
     )
 
     parser.add_argument(
         '--output-dir',
         type=str,
-        required=True,
-        help='Directory to save parquet files'
+        default='data/processed',
+        help='Directory to save parquet files (default: data/processed)'
     )
 
     parser.add_argument(
@@ -413,7 +413,7 @@ Output Format:
     print("NEXT STEPS")
     print("="*80)
     print("\nVerify the extracted data:")
-    print(f"  python summarize_raw_data.py --input-dir {output_dir}")
+    print(f"  python summarize.py --input-dir {output_dir}")
 
     return 0 if not failed else 1
 
