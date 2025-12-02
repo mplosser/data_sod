@@ -7,54 +7,42 @@ Automated pipeline for downloading and processing FDIC Summary of Deposits (SOD)
 Downloads raw data and converts it to parquet format.
 
 **Data Coverage:**
-- **Years**: 1987-2025
+- **Years**: 1987-2025 (39 years)
 - **Frequency**: Annual (as of June 30 each year)
 - **Entities**: 70,000-90,000 bank branches per year
 - **Variables**: 78-80 variables per year
 
 ## Requirements
 
-Install required Python packages before running the scripts:
-
 ```bash
 pip install -r requirements.txt
 ```
+
 ## Quick Start
 
 ### 1. Download Data
 
 ```bash
 # Download all available years (1987-2025)
-python download.py --start-year 1987 --end-year 2025 \
-    --api-key YOUR_API_KEY
-
-# Or use environment variable for API key
-export FDIC_API_KEY=YOUR_API_KEY
 python download.py --start-year 1987 --end-year 2025
 
-# Download specific range
-python download.py --start-year 2020 --end-year 2025 \
-    --api-key YOUR_API_KEY
+# With API key (recommended to avoid rate limits)
+python download.py --start-year 1987 --end-year 2025 --api-key YOUR_API_KEY
+
+# Or use environment variable
+export FDIC_API_KEY=YOUR_API_KEY  # macOS/Linux
+set FDIC_API_KEY=YOUR_API_KEY     # Windows
+python download.py --start-year 1987 --end-year 2025
 ```
 
-**API Key** (optional but recommended):
-- Not required but helps avoid rate limits
-- Get your key from [SOD_API_INFO.md](../SOD_API_INFO.md)
-- Or register at: https://api.fdic.gov/banks/docs/
-
-### 2. Extract to Parquet
+### 2. Parse to Parquet
 
 ```bash
 # Extract and parse with parallelization (recommended)
-python parse.py \
-    --input-dir data/raw \
-    --output-dir data/processed
+python parse.py --input-dir data/raw --output-dir data/processed
 
 # Limit workers for low-memory systems
-python parse.py \
-    --input-dir data/raw \
-    --output-dir data/processed \
-    --workers 4
+python parse.py --input-dir data/raw --output-dir data/processed --workers 4
 ```
 
 ### 3. Verify Data
@@ -64,36 +52,43 @@ python parse.py \
 python summarize.py --input-dir data/processed
 
 # Save summary to CSV
-python summarize.py \
-    --input-dir data/processed \
-    --output-csv sod_raw_summary.csv
+python summarize.py --input-dir data/processed --output-csv sod_summary.csv
 ```
 
 ## Data Sources
 
 SOD data comes from two different FDIC sources depending on the year:
 
-| Year Range | Source | Format | Method | Automation |
-|------------|--------|--------|--------|------------|
-| 1987-1993 | [FDIC FOIA](https://www.fdic.gov/foia/sod/index.html) | ZIP (sod-{year}.zip) | Bulk Download | ✅ Automated |
-| 1994-2025 | [FDIC Banks API](https://api.fdic.gov/banks/docs/) | JSON→CSV (ALL_{year}.csv) | API | ✅ Automated |
+| Year Range | Source | Format | Method |
+|------------|--------|--------|--------|
+| 1987-1993 | [FDIC FOIA](https://www.fdic.gov/foia/sod/index.html) | ZIP (sod-{year}.zip) | Bulk Download |
+| 1994-2025 | [FDIC Banks API](https://api.fdic.gov/banks/docs/) | CSV (ALL_{year}.csv) | REST API |
 
-**Why the API?**
-- Works for all years 1994-2025
-- No manual downloads needed
-- Automatic pagination handling
-- See [SOD_API_INFO.md](../SOD_API_INFO.md) for details
+## FDIC API
+
+The FDIC Banks API is used for downloading 1994-2025 data. An API key is optional but recommended to avoid rate limits.
+
+**Get an API Key:**
+1. Visit https://api.fdic.gov/banks/docs/
+2. Click "Get API Key" and register with your email
+3. Use the key via environment variable or `--api-key` argument
+
+**API Details:**
+- **Endpoint**: `https://api.fdic.gov/banks/sod`
+- **Max records per request**: 10,000
+- **Pagination**: Handled automatically by download.py
+- **Rate limits**: Use 0.5-1s delay between requests (default: 0.5s)
 
 ## Output Format
 
 All data is saved as parquet files in `data/processed/`:
 
 ```
-data/sod/processed/
+data/processed/
 ├── 1987.parquet
 ├── 1988.parquet
 ├── ...
-├── 2025.parquet
+└── 2025.parquet
 ```
 
 **File Structure:**
@@ -106,69 +101,23 @@ data/sod/processed/
   - `DEPSUMBR` - Total deposits at branch (in thousands)
   - `STNAME` - State name
   - `CITY` - City
-  - Additional variables (alphabetical)
-
-**Coverage:**
-- 39 total years (1987-2025)
-- ~70,000-90,000 branches per year
-- ~78-80 variables per year
-- Complete data with no filtering or transformations
+  - Additional variables (alphabetical order)
 
 ## Pipeline Scripts
 
-### Core Scripts
+| Script | Purpose | Input | Output | Time |
+|--------|---------|-------|--------|------|
+| `download.py` | Download SOD data | FDIC sources | ZIP/CSV files | ~15-20 min |
+| `parse.py` | Convert to parquet | ZIP/CSV files | Parquet files | ~2-4 min |
+| `summarize.py` | Verify data | Parquet files | Summary table | ~5-10 sec |
 
-| Script | Purpose | Input | Output | Performance |
-|--------|---------|-------|--------|-------------|
-| `download.py` | Download SOD data (Bulk/API) | FDIC sources | ZIP/CSV files | ~15-20 min (1994-2025 via API) |
-| `parse.py` | Extract ZIP/CSV to parquet (parallel) | ZIP/CSV files | Parquet files | ~2-4 min (39 files) |
-| `summarize.py` | Summarize parsed data | Parquet files | Summary table | ~5-10 sec (39 files) |
-
-**Parallelization Options** (available for `parse.py`, `summarize.py`):
-- **Default**: Uses all CPU cores for parallel processing
-- `--workers N`: Specify number of parallel workers (e.g., `--workers 4`)
-- `--no-parallel`: Disable parallel processing (slower but uses less memory)
-- **Expected speedup**: 4-8x on multi-core CPUs
-
-**Download Options**:
-```bash
-# Download with API key (recommended)
-python download.py --start-year 1987 --end-year 2025 \
-    --api-key YOUR_API_KEY
-
-# Download without API key (may have rate limits)
-python download.py --start-year 1987 --end-year 2025
-
-# Adjust delay between API requests
-python download.py --start-year 1994 --end-year 2025 \
-    --api-key YOUR_API_KEY \
-    --delay 1.0
-```
-
-**Extraction Options**:
-```bash
-# Default parallel processing (all CPU cores)
-python parse.py \
-    --input-dir data/raw \
-    --output-dir data/processed
-
-# Limit to 4 workers
-python parse.py \
-    --input-dir data/raw \
-    --output-dir data/processed \
-    --workers 4
-
-# Disable parallelization
-python parse.py \
-    --input-dir data/raw \
-    --output-dir data/processed \
-    --no-parallel
-```
-
+**Parallelization** (parse.py and summarize.py):
+- Default: Uses all CPU cores
+- `--workers N`: Limit to N workers
+- `--no-parallel`: Sequential processing
 
 ## Additional Resources
 
 - **FDIC SOD Overview**: https://www.fdic.gov/resources/bankers/call-reports/summary-of-deposits
 - **FDIC Banks API**: https://api.fdic.gov/banks/docs/
 - **BankFind Suite**: https://banks.data.fdic.gov/bankfind-suite/
-- **SOD API Guide**: See [SOD_API_INFO.md](../SOD_API_INFO.md) for detailed API documentation

@@ -5,9 +5,8 @@ This script processes downloaded SOD files (ZIP or CSV) and converts them to
 standardized parquet format with parallelization support.
 
 Handles multiple file formats:
-- sod-{year}.zip (1987-1993): FDIC FOIA format
-- ALL_{year}.zip (1994-2023): FDIC Dynamic Download format
-- ALL_{year}.csv (2024+): BankFind Suite format
+- sod-{year}.zip (1987-1993): FDIC FOIA bulk download
+- ALL_{year}.csv (1994-2025): FDIC Banks API format
 
 Usage:
     # Extract all files with default parallelization
