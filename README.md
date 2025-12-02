@@ -55,6 +55,21 @@ python summarize.py --input-dir data/processed
 python summarize.py --input-dir data/processed --output-csv sod_summary.csv
 ```
 
+### 4. Cleanup (Optional)
+
+After parsing, raw files (ZIP/CSV) are no longer needed. Use `cleanup.py` to free disk space:
+
+```bash
+# Preview what would be deleted
+python cleanup.py --raw --dry-run
+
+# Delete raw files (~5 GB)
+python cleanup.py --raw
+
+# Delete everything (raw + processed)
+python cleanup.py --all
+```
+
 ## Data Sources
 
 SOD data comes from two different FDIC sources depending on the year:
@@ -110,11 +125,20 @@ data/processed/
 | `download.py` | Download SOD data | FDIC sources | ZIP/CSV files | ~15-20 min |
 | `parse.py` | Convert to parquet | ZIP/CSV files | Parquet files | ~2-4 min |
 | `summarize.py` | Verify data | Parquet files | Summary table | ~5-10 sec |
+| `cleanup.py` | Delete data files | - | - | instant |
 
 **Parallelization** (parse.py and summarize.py):
 - Default: Uses all CPU cores
 - `--workers N`: Limit to N workers
 - `--no-parallel`: Sequential processing
+
+**Cleanup options:**
+```bash
+python cleanup.py --raw          # Delete raw files (ZIP/CSV)
+python cleanup.py --processed    # Delete parquet files
+python cleanup.py --all          # Delete everything
+python cleanup.py --all --dry-run  # Preview what would be deleted
+```
 
 ## Additional Resources
 

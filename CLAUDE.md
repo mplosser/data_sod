@@ -43,10 +43,10 @@ python download.py --start-year 2020 --end-year 2025
 
 ## Architecture
 
-### 3-Stage Pipeline
+### Pipeline
 ```
-download.py → parse.py → summarize.py
-(raw ZIP/CSV)  (parquet)   (verification)
+download.py → parse.py → summarize.py → cleanup.py
+(raw ZIP/CSV)  (parquet)   (verification)  (optional)
 ```
 
 ### Dual Source Strategy
