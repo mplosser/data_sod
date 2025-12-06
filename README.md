@@ -43,6 +43,12 @@ python parse.py --input-dir data/raw --output-dir data/processed
 
 # Limit workers for low-memory systems
 python parse.py --input-dir data/raw --output-dir data/processed --workers 4
+
+# Force reprocessing of existing files
+python parse.py --input-dir data/raw --output-dir data/processed --force
+
+# Save data dictionary to CSV
+python parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
 ```
 
 ### 3. Verify Data
@@ -123,7 +129,10 @@ data/processed/
 Parquet files include embedded variable descriptions (similar to Stata variable labels), fetched from the [FDIC schema](https://api.fdic.gov/banks/docs/sod_properties.yaml).
 
 ```bash
-# View all variable descriptions
+# Save data dictionary to CSV during parsing
+python parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
+
+# View descriptions from parquet file
 python describe.py data/processed/2025.parquet
 
 # View specific variable

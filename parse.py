@@ -256,12 +256,12 @@ def process_file_wrapper(args_tuple):
     Wrapper function for parallel processing.
 
     Args:
-        args_tuple: (file_path_str, output_dir_str, descriptions_dict)
+        args_tuple: (file_path_str, output_dir_str, descriptions_dict, force)
 
     Returns:
         Tuple of (status, year, message)
     """
-    file_path_str, output_dir_str, descriptions = args_tuple
+    file_path_str, output_dir_str, descriptions, force = args_tuple
 
     file_path = Path(file_path_str)
     output_dir = Path(output_dir_str)
@@ -275,7 +275,7 @@ def process_file_wrapper(args_tuple):
 
         # Check if already processed
         output_path = output_dir / f"{year}.parquet"
-        if output_path.exists():
+        if output_path.exists() and not force:
             return ('skipped', year, "Already exists")
 
         # Process based on file type
@@ -379,6 +379,12 @@ Output Format:
     )
 
     parser.add_argument(
+        '--force', '-f',
+        action='store_true',
+        help='Overwrite existing parquet files (default: skip existing)'
+    )
+
+    parser.add_argument(
         '--no-descriptions',
         action='store_true',
         help='Skip embedding field descriptions in parquet metadata'
@@ -388,6 +394,13 @@ Output Format:
         '--refresh-schema',
         action='store_true',
         help='Force refresh of FDIC schema cache'
+    )
+
+    parser.add_argument(
+        '--save-dictionary',
+        type=str,
+        metavar='PATH',
+        help='Save data dictionary to CSV file (e.g., data/sod_dictionary.csv)'
     )
 
     args = parser.parse_args()
@@ -445,6 +458,19 @@ Output Format:
         use_cache = not args.refresh_schema
         descriptions = fetch_field_descriptions(use_cache=use_cache)
 
+    # Save data dictionary if requested
+    if args.save_dictionary and descriptions:
+        dict_path = Path(args.save_dictionary)
+        dict_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create DataFrame with field names and descriptions
+        dict_df = pd.DataFrame([
+            {'field': k, 'description': v}
+            for k, v in sorted(descriptions.items())
+        ])
+        dict_df.to_csv(dict_path, index=False)
+        print(f"Data dictionary saved to: {dict_path}")
+
     print("="*80)
     print("SOD DATA EXTRACTION")
     print("="*80)
@@ -464,7 +490,7 @@ Output Format:
         # Sequential processing
         print("\nProcessing sequentially...")
         for file_path in files_to_process:
-            status, year, message = process_file_wrapper((str(file_path), str(output_dir), descriptions))
+            status, year, message = process_file_wrapper((str(file_path), str(output_dir), descriptions, args.force))
 
             if status == 'success':
                 successful.append(year)
@@ -483,7 +509,7 @@ Output Format:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             # Submit all tasks
             future_to_file = {
-                executor.submit(process_file_wrapper, (str(f), str(output_dir), descriptions)): f
+                executor.submit(process_file_wrapper, (str(f), str(output_dir), descriptions, args.force)): f
                 for f in files_to_process
             }
 
