@@ -28,13 +28,108 @@ Usage:
 """
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import zipfile
 import argparse
 import sys
+import json
+import requests
+import yaml
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 import re
+
+# FDIC schema URL
+FDIC_SCHEMA_URL = "https://api.fdic.gov/banks/docs/sod_properties.yaml"
+SCHEMA_CACHE_FILE = Path(__file__).parent / "data" / ".sod_schema_cache.json"
+
+
+def fetch_field_descriptions(use_cache=True):
+    """
+    Fetch field descriptions from FDIC YAML schema.
+
+    Args:
+        use_cache: Use cached schema if available
+
+    Returns:
+        Dict mapping field names (uppercase) to descriptions
+    """
+    # Try cache first
+    if use_cache and SCHEMA_CACHE_FILE.exists():
+        try:
+            with open(SCHEMA_CACHE_FILE, 'r') as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    # Fetch from FDIC
+    try:
+        print("Fetching field descriptions from FDIC...")
+        response = requests.get(FDIC_SCHEMA_URL, timeout=30)
+        response.raise_for_status()
+
+        schema = yaml.safe_load(response.text)
+
+        # Extract field descriptions
+        descriptions = {}
+        properties = schema.get('properties', {}).get('data', {}).get('properties', {})
+
+        for field_name, field_def in properties.items():
+            title = field_def.get('title', '')
+            desc = field_def.get('description', '')
+            # Use title as primary, description as fallback
+            descriptions[field_name.upper()] = title or desc or ''
+
+        # Add our custom field
+        descriptions['REPORTING_PERIOD'] = 'Reporting date (June 30 of data year)'
+
+        # Cache for future use
+        SCHEMA_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(SCHEMA_CACHE_FILE, 'w') as f:
+            json.dump(descriptions, f, indent=2)
+
+        print(f"  Loaded {len(descriptions)} field descriptions")
+        return descriptions
+
+    except Exception as e:
+        print(f"  Warning: Could not fetch schema: {e}")
+        return {}
+
+
+def create_parquet_schema(df, descriptions):
+    """
+    Create PyArrow schema with field descriptions as metadata.
+
+    Args:
+        df: DataFrame to create schema for
+        descriptions: Dict mapping field names to descriptions
+
+    Returns:
+        PyArrow schema with metadata
+    """
+    fields = []
+    for col in df.columns:
+        # Get pandas dtype and convert to PyArrow type
+        pa_type = pa.from_numpy_dtype(df[col].dtype)
+
+        # Handle datetime specially
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            pa_type = pa.timestamp('ns')
+
+        # Get description for this field
+        desc = descriptions.get(col.upper(), '')
+
+        # Create field with metadata
+        if desc:
+            field = pa.field(col, pa_type, metadata={'description': desc.encode('utf-8')})
+        else:
+            field = pa.field(col, pa_type)
+
+        fields.append(field)
+
+    return pa.schema(fields)
 
 def extract_year_from_filename(filename):
     """
@@ -161,12 +256,12 @@ def process_file_wrapper(args_tuple):
     Wrapper function for parallel processing.
 
     Args:
-        args_tuple: (file_path_str, output_dir_str)
+        args_tuple: (file_path_str, output_dir_str, descriptions_dict)
 
     Returns:
         Tuple of (status, year, message)
     """
-    file_path_str, output_dir_str = args_tuple
+    file_path_str, output_dir_str, descriptions = args_tuple
 
     file_path = Path(file_path_str)
     output_dir = Path(output_dir_str)
@@ -194,9 +289,17 @@ def process_file_wrapper(args_tuple):
         # Standardize
         df = standardize_sod_data(df, year)
 
-        # Save as parquet
+        # Save as parquet with schema metadata
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_parquet(output_path, index=False, compression='snappy')
+
+        if descriptions:
+            # Create schema with field descriptions
+            schema = create_parquet_schema(df, descriptions)
+            table = pa.Table.from_pandas(df, schema=schema, preserve_index=False)
+            pq.write_table(table, output_path, compression='snappy')
+        else:
+            # Fallback to simple write
+            df.to_parquet(output_path, index=False, compression='snappy')
 
         return ('success', year, f"{len(df):,} branches, {len(df.columns)-2} variables")
 
@@ -275,6 +378,18 @@ Output Format:
         help='Only process files up to this year'
     )
 
+    parser.add_argument(
+        '--no-descriptions',
+        action='store_true',
+        help='Skip embedding field descriptions in parquet metadata'
+    )
+
+    parser.add_argument(
+        '--refresh-schema',
+        action='store_true',
+        help='Force refresh of FDIC schema cache'
+    )
+
     args = parser.parse_args()
 
     # Setup paths
@@ -323,6 +438,13 @@ Output Format:
     else:
         workers = multiprocessing.cpu_count()
 
+    # Fetch field descriptions
+    if args.no_descriptions:
+        descriptions = {}
+    else:
+        use_cache = not args.refresh_schema
+        descriptions = fetch_field_descriptions(use_cache=use_cache)
+
     print("="*80)
     print("SOD DATA EXTRACTION")
     print("="*80)
@@ -330,6 +452,7 @@ Output Format:
     print(f"Output directory: {output_dir}")
     print(f"Files to process: {len(files_to_process)}")
     print(f"Parallel workers: {workers}")
+    print(f"Field descriptions: {'Yes' if descriptions else 'No'}")
     print("="*80)
 
     # Process files
@@ -341,7 +464,7 @@ Output Format:
         # Sequential processing
         print("\nProcessing sequentially...")
         for file_path in files_to_process:
-            status, year, message = process_file_wrapper((str(file_path), str(output_dir)))
+            status, year, message = process_file_wrapper((str(file_path), str(output_dir), descriptions))
 
             if status == 'success':
                 successful.append(year)
@@ -360,7 +483,7 @@ Output Format:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             # Submit all tasks
             future_to_file = {
-                executor.submit(process_file_wrapper, (str(f), str(output_dir))): f
+                executor.submit(process_file_wrapper, (str(f), str(output_dir), descriptions)): f
                 for f in files_to_process
             }
 

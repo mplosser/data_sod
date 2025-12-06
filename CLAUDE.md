@@ -60,6 +60,15 @@ Both sources are unified through `parse.py` into standardized parquet files.
 - Add `REPORTING_PERIOD` (June 30 of year)
 - Ensure `CERT` is integer type
 - Column order: `CERT`, `REPORTING_PERIOD`, then alphabetical
+- Embed variable descriptions from FDIC schema (via PyArrow metadata)
+
+### Variable Descriptions
+Parquet files include column-level metadata with descriptions from the FDIC YAML schema. Use `describe.py` to view them:
+```bash
+python describe.py data/processed/2025.parquet           # All variables
+python describe.py data/processed/2025.parquet DEPSUMBR  # Specific variable
+python describe.py data/processed/2025.parquet --search deposit  # Search
+```
 
 ## Key Design Patterns
 

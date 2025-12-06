@@ -118,6 +118,31 @@ data/processed/
   - `CITY` - City
   - Additional variables (alphabetical order)
 
+**Variable Descriptions:**
+
+Parquet files include embedded variable descriptions (similar to Stata variable labels), fetched from the [FDIC schema](https://api.fdic.gov/banks/docs/sod_properties.yaml).
+
+```bash
+# View all variable descriptions
+python describe.py data/processed/2025.parquet
+
+# View specific variable
+python describe.py data/processed/2025.parquet DEPSUMBR
+
+# Search for variables by keyword
+python describe.py data/processed/2025.parquet --search deposit
+```
+
+Access descriptions in Python:
+```python
+import pyarrow.parquet as pq
+
+table = pq.read_table("data/processed/2025.parquet")
+for field in table.schema:
+    desc = field.metadata.get(b'description', b'').decode() if field.metadata else ''
+    print(f"{field.name}: {desc}")
+```
+
 ## Pipeline Scripts
 
 | Script | Purpose | Input | Output | Time |
@@ -125,6 +150,7 @@ data/processed/
 | `download.py` | Download SOD data | FDIC sources | ZIP/CSV files | ~15-20 min |
 | `parse.py` | Convert to parquet | ZIP/CSV files | Parquet files | ~2-4 min |
 | `summarize.py` | Verify data | Parquet files | Summary table | ~5-10 sec |
+| `describe.py` | View variable descriptions | Parquet file | Descriptions | instant |
 | `cleanup.py` | Delete data files | - | - | instant |
 
 **Parallelization** (parse.py and summarize.py):
