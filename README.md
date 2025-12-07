@@ -46,9 +46,6 @@ python 02_parse.py --input-dir data/raw --output-dir data/processed --workers 4
 
 # Force reprocessing of existing files
 python 02_parse.py --input-dir data/raw --output-dir data/processed --force
-
-# Save data dictionary to CSV
-python 02_parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
 ```
 
 ### 3. Verify Data
@@ -126,11 +123,7 @@ data/processed/
 
 **Variable Descriptions:**
 
-Parquet files include embedded variable descriptions (similar to Stata variable labels), fetched from the [FDIC schema](https://api.fdic.gov/banks/docs/sod_properties.yaml). Export to CSV with:
-
-```bash
-python 02_parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
-```
+Parquet files include embedded variable descriptions (similar to Stata variable labels), fetched from the [FDIC schema](https://api.fdic.gov/banks/docs/sod_properties.yaml). A data dictionary CSV is automatically saved to `data/sod_dictionary.csv` during parsing.
 
 Access descriptions in Python:
 ```python

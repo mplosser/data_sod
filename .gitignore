@@ -17,6 +17,7 @@ api_key
 
 # Allow specific CSV files that are documentation/config (must come BEFORE *.csv)
 !docs/config/*.csv
+!data/sod_dictionary.csv
 !data/analysis/*_dictionary.csv
 !data/analysis/*_descriptions.csv
 

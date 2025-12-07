@@ -397,10 +397,9 @@ Output Format:
     )
 
     parser.add_argument(
-        '--save-dictionary',
-        type=str,
-        metavar='PATH',
-        help='Save data dictionary to CSV file (e.g., data/sod_dictionary.csv)'
+        '--no-dictionary',
+        action='store_true',
+        help='Skip saving data dictionary CSV'
     )
 
     args = parser.parse_args()
@@ -458,9 +457,9 @@ Output Format:
         use_cache = not args.refresh_schema
         descriptions = fetch_field_descriptions(use_cache=use_cache)
 
-    # Save data dictionary if requested
-    if args.save_dictionary and descriptions:
-        dict_path = Path(args.save_dictionary)
+    # Save data dictionary by default
+    dict_path = Path("data/sod_dictionary.csv")
+    if descriptions and not args.no_dictionary:
         dict_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create DataFrame with field names and descriptions

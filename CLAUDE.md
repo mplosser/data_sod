@@ -63,10 +63,7 @@ Both sources are unified through `02_parse.py` into standardized parquet files.
 - Embed variable descriptions from FDIC schema (via PyArrow metadata)
 
 ### Variable Descriptions
-Parquet files include column-level metadata with descriptions from the FDIC YAML schema. Export to CSV:
-```bash
-python 02_parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
-```
+Parquet files include column-level metadata with descriptions from the FDIC YAML schema. A data dictionary CSV is automatically saved to `data/sod_dictionary.csv` during parsing.
 
 ## Key Design Patterns
 
