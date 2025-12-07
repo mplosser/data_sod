@@ -61,32 +61,19 @@ python 03_summarize.py --input-dir data/processed
 python 03_summarize.py --input-dir data/processed --output-csv sod_summary.csv
 ```
 
-### 4. View Variable Descriptions
+### 4. Cleanup (Optional)
 
-```bash
-# View all variable descriptions from a parquet file
-python 04_describe.py data/processed/2025.parquet
-
-# View specific variable
-python 04_describe.py data/processed/2025.parquet DEPSUMBR
-
-# Search for variables by keyword
-python 04_describe.py data/processed/2025.parquet --search deposit
-```
-
-### 5. Cleanup (Optional)
-
-After parsing, raw files (ZIP/CSV) are no longer needed. Use `05_cleanup.py` to free disk space:
+After parsing, raw files (ZIP/CSV) are no longer needed. Use `04_cleanup.py` to free disk space:
 
 ```bash
 # Preview what would be deleted
-python 05_cleanup.py --raw --dry-run
+python 04_cleanup.py --raw --dry-run
 
 # Delete raw files (~5 GB)
-python 05_cleanup.py --raw
+python 04_cleanup.py --raw
 
 # Delete everything (raw + processed)
-python 05_cleanup.py --all
+python 04_cleanup.py --all
 ```
 
 ## Data Sources
@@ -139,10 +126,9 @@ data/processed/
 
 **Variable Descriptions:**
 
-Parquet files include embedded variable descriptions (similar to Stata variable labels), fetched from the [FDIC schema](https://api.fdic.gov/banks/docs/sod_properties.yaml).
+Parquet files include embedded variable descriptions (similar to Stata variable labels), fetched from the [FDIC schema](https://api.fdic.gov/banks/docs/sod_properties.yaml). Export to CSV with:
 
 ```bash
-# Save data dictionary to CSV during parsing
 python 02_parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
 ```
 
@@ -163,8 +149,7 @@ for field in table.schema:
 | `01_download.py` | Download SOD data | FDIC sources | ZIP/CSV files | ~15-20 min |
 | `02_parse.py` | Convert to parquet | ZIP/CSV files | Parquet files | ~2-4 min |
 | `03_summarize.py` | Verify data | Parquet files | Summary table | ~5-10 sec |
-| `04_describe.py` | View variable descriptions | Parquet file | Descriptions | instant |
-| `05_cleanup.py` | Delete data files | - | - | instant |
+| `04_cleanup.py` | Delete data files | - | - | instant |
 
 **Parallelization** (02_parse.py and 03_summarize.py):
 - Default: Uses all CPU cores
@@ -173,10 +158,10 @@ for field in table.schema:
 
 **Cleanup options:**
 ```bash
-python 05_cleanup.py --raw          # Delete raw files (ZIP/CSV)
-python 05_cleanup.py --processed    # Delete parquet files
-python 05_cleanup.py --all          # Delete everything
-python 05_cleanup.py --all --dry-run  # Preview what would be deleted
+python 04_cleanup.py --raw          # Delete raw files (ZIP/CSV)
+python 04_cleanup.py --processed    # Delete parquet files
+python 04_cleanup.py --all          # Delete everything
+python 04_cleanup.py --all --dry-run  # Preview what would be deleted
 ```
 
 ## Additional Resources

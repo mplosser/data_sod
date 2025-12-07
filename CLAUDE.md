@@ -45,7 +45,7 @@ python 01_download.py --start-year 2020 --end-year 2025
 
 ### Pipeline
 ```
-01_download.py → 02_parse.py → 03_summarize.py → 05_cleanup.py
+01_download.py → 02_parse.py → 03_summarize.py → 04_cleanup.py
 (raw ZIP/CSV)    (parquet)     (verification)    (optional)
 ```
 
@@ -63,11 +63,9 @@ Both sources are unified through `02_parse.py` into standardized parquet files.
 - Embed variable descriptions from FDIC schema (via PyArrow metadata)
 
 ### Variable Descriptions
-Parquet files include column-level metadata with descriptions from the FDIC YAML schema. Use `04_describe.py` to view them:
+Parquet files include column-level metadata with descriptions from the FDIC YAML schema. Export to CSV:
 ```bash
-python 04_describe.py data/processed/2025.parquet           # All variables
-python 04_describe.py data/processed/2025.parquet DEPSUMBR  # Specific variable
-python 04_describe.py data/processed/2025.parquet --search deposit  # Search
+python 02_parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
 ```
 
 ## Key Design Patterns
