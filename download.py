@@ -23,7 +23,9 @@ import argparse
 import sys
 import os
 import time
+import json
 import pandas as pd
+import yaml
 from pathlib import Path
 from tqdm import tqdm
 from requests.adapters import HTTPAdapter
@@ -35,6 +37,10 @@ DEFAULT_OUTPUT_DIR = 'data/raw'
 # FDIC API configuration
 FDIC_API_BASE_URL = "https://api.fdic.gov/banks/sod"
 FDIC_API_MAX_LIMIT = 10000
+
+# FDIC schema configuration
+FDIC_SCHEMA_URL = "https://api.fdic.gov/banks/docs/sod_properties.yaml"
+SCHEMA_CACHE_FILE = Path(__file__).parent / "data" / ".sod_schema_cache.json"
 
 
 def create_session():
@@ -58,6 +64,60 @@ def create_session():
     })
 
     return session
+
+
+def fetch_schema(session, force_refresh=False):
+    """
+    Fetch and cache FDIC field schema from YAML.
+
+    Args:
+        session: Requests session
+        force_refresh: Force refresh even if cache exists
+
+    Returns:
+        Dict mapping field names to descriptions, or empty dict on failure
+    """
+    # Check cache first
+    if not force_refresh and SCHEMA_CACHE_FILE.exists():
+        try:
+            with open(SCHEMA_CACHE_FILE, 'r') as f:
+                cached = json.load(f)
+                print(f"Schema loaded from cache ({len(cached)} fields)")
+                return cached
+        except Exception:
+            pass
+
+    # Fetch from FDIC
+    print("Fetching field schema from FDIC...")
+    try:
+        response = session.get(FDIC_SCHEMA_URL, timeout=30)
+        response.raise_for_status()
+
+        schema = yaml.safe_load(response.text)
+
+        # Extract field descriptions
+        descriptions = {}
+        properties = schema.get('properties', {}).get('data', {}).get('properties', {})
+
+        for field_name, field_def in properties.items():
+            title = field_def.get('title', '')
+            desc = field_def.get('description', '')
+            descriptions[field_name.upper()] = title or desc or ''
+
+        # Add custom field
+        descriptions['REPORTING_PERIOD'] = 'Reporting date (June 30 of data year)'
+
+        # Cache for future use
+        SCHEMA_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(SCHEMA_CACHE_FILE, 'w') as f:
+            json.dump(descriptions, f, indent=2)
+
+        print(f"  Cached {len(descriptions)} field descriptions")
+        return descriptions
+
+    except Exception as e:
+        print(f"  Warning: Could not fetch schema: {e}")
+        return {}
 
 
 def download_file(url, output_path, delay=1.0):
@@ -337,6 +397,18 @@ Notes:
         help='Delay between API requests in seconds (default: 0.5)'
     )
 
+    parser.add_argument(
+        '--refresh-schema',
+        action='store_true',
+        help='Force refresh of FDIC schema cache'
+    )
+
+    parser.add_argument(
+        '--skip-schema',
+        action='store_true',
+        help='Skip fetching/caching the FDIC schema'
+    )
+
     args = parser.parse_args()
 
     # Get API key from environment if not provided
@@ -362,6 +434,10 @@ Notes:
 
     # Create session for API requests
     session = create_session()
+
+    # Fetch and cache schema (for use by parse.py)
+    if not args.skip_schema:
+        fetch_schema(session, force_refresh=args.refresh_schema)
 
     # Download each year
     years = range(args.start_year, args.end_year + 1)
