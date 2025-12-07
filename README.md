@@ -24,56 +24,69 @@ pip install -r requirements.txt
 
 ```bash
 # Download all available years (1987-2025)
-python download.py --start-year 1987 --end-year 2025
+python 01_download.py --start-year 1987 --end-year 2025
 
 # With API key (recommended to avoid rate limits)
-python download.py --start-year 1987 --end-year 2025 --api-key YOUR_API_KEY
+python 01_download.py --start-year 1987 --end-year 2025 --api-key YOUR_API_KEY
 
 # Or use environment variable
 export FDIC_API_KEY=YOUR_API_KEY  # macOS/Linux
 set FDIC_API_KEY=YOUR_API_KEY     # Windows
-python download.py --start-year 1987 --end-year 2025
+python 01_download.py --start-year 1987 --end-year 2025
 ```
 
 ### 2. Parse to Parquet
 
 ```bash
 # Extract and parse with parallelization (recommended)
-python parse.py --input-dir data/raw --output-dir data/processed
+python 02_parse.py --input-dir data/raw --output-dir data/processed
 
 # Limit workers for low-memory systems
-python parse.py --input-dir data/raw --output-dir data/processed --workers 4
+python 02_parse.py --input-dir data/raw --output-dir data/processed --workers 4
 
 # Force reprocessing of existing files
-python parse.py --input-dir data/raw --output-dir data/processed --force
+python 02_parse.py --input-dir data/raw --output-dir data/processed --force
 
 # Save data dictionary to CSV
-python parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
+python 02_parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
 ```
 
 ### 3. Verify Data
 
 ```bash
 # Generate summary
-python summarize.py --input-dir data/processed
+python 03_summarize.py --input-dir data/processed
 
 # Save summary to CSV
-python summarize.py --input-dir data/processed --output-csv sod_summary.csv
+python 03_summarize.py --input-dir data/processed --output-csv sod_summary.csv
 ```
 
-### 4. Cleanup (Optional)
+### 4. View Variable Descriptions
 
-After parsing, raw files (ZIP/CSV) are no longer needed. Use `cleanup.py` to free disk space:
+```bash
+# View all variable descriptions from a parquet file
+python 04_describe.py data/processed/2025.parquet
+
+# View specific variable
+python 04_describe.py data/processed/2025.parquet DEPSUMBR
+
+# Search for variables by keyword
+python 04_describe.py data/processed/2025.parquet --search deposit
+```
+
+### 5. Cleanup (Optional)
+
+After parsing, raw files (ZIP/CSV) are no longer needed. Use `05_cleanup.py` to free disk space:
 
 ```bash
 # Preview what would be deleted
-python cleanup.py --raw --dry-run
+python 05_cleanup.py --raw --dry-run
 
 # Delete raw files (~5 GB)
-python cleanup.py --raw
+python 05_cleanup.py --raw
 
 # Delete everything (raw + processed)
-python cleanup.py --all
+python 05_cleanup.py --all
 ```
 
 ## Data Sources
@@ -97,7 +110,7 @@ The FDIC Banks API is used for downloading 1994-2025 data. An API key is optiona
 **API Details:**
 - **Endpoint**: `https://api.fdic.gov/banks/sod`
 - **Max records per request**: 10,000
-- **Pagination**: Handled automatically by download.py
+- **Pagination**: Handled automatically by 01_download.py
 - **Rate limits**: Use 0.5-1s delay between requests (default: 0.5s)
 
 ## Output Format
@@ -130,16 +143,7 @@ Parquet files include embedded variable descriptions (similar to Stata variable 
 
 ```bash
 # Save data dictionary to CSV during parsing
-python parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
-
-# View descriptions from parquet file
-python describe.py data/processed/2025.parquet
-
-# View specific variable
-python describe.py data/processed/2025.parquet DEPSUMBR
-
-# Search for variables by keyword
-python describe.py data/processed/2025.parquet --search deposit
+python 02_parse.py --input-dir data/raw --output-dir data/processed --save-dictionary data/sod_dictionary.csv
 ```
 
 Access descriptions in Python:
@@ -156,23 +160,23 @@ for field in table.schema:
 
 | Script | Purpose | Input | Output | Time |
 |--------|---------|-------|--------|------|
-| `download.py` | Download SOD data | FDIC sources | ZIP/CSV files | ~15-20 min |
-| `parse.py` | Convert to parquet | ZIP/CSV files | Parquet files | ~2-4 min |
-| `summarize.py` | Verify data | Parquet files | Summary table | ~5-10 sec |
-| `describe.py` | View variable descriptions | Parquet file | Descriptions | instant |
-| `cleanup.py` | Delete data files | - | - | instant |
+| `01_download.py` | Download SOD data | FDIC sources | ZIP/CSV files | ~15-20 min |
+| `02_parse.py` | Convert to parquet | ZIP/CSV files | Parquet files | ~2-4 min |
+| `03_summarize.py` | Verify data | Parquet files | Summary table | ~5-10 sec |
+| `04_describe.py` | View variable descriptions | Parquet file | Descriptions | instant |
+| `05_cleanup.py` | Delete data files | - | - | instant |
 
-**Parallelization** (parse.py and summarize.py):
+**Parallelization** (02_parse.py and 03_summarize.py):
 - Default: Uses all CPU cores
 - `--workers N`: Limit to N workers
 - `--no-parallel`: Sequential processing
 
 **Cleanup options:**
 ```bash
-python cleanup.py --raw          # Delete raw files (ZIP/CSV)
-python cleanup.py --processed    # Delete parquet files
-python cleanup.py --all          # Delete everything
-python cleanup.py --all --dry-run  # Preview what would be deleted
+python 05_cleanup.py --raw          # Delete raw files (ZIP/CSV)
+python 05_cleanup.py --processed    # Delete parquet files
+python 05_cleanup.py --all          # Delete everything
+python 05_cleanup.py --all --dry-run  # Preview what would be deleted
 ```
 
 ## Additional Resources
