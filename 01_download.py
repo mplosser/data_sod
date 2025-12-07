@@ -353,7 +353,6 @@ Data Sources:
 API Key:
   Not required but recommended to avoid rate limits.
   Register at: https://api.fdic.gov/banks/docs/
-  Or use existing key from SOD_API_INFO.md
 
 Notes:
   - Each year contains 70,000-90,000 bank branches

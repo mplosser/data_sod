@@ -111,12 +111,25 @@ def create_parquet_schema(df, descriptions):
     """
     fields = []
     for col in df.columns:
-        # Get pandas dtype and convert to PyArrow type
-        pa_type = pa.from_numpy_dtype(df[col].dtype)
+        dtype = df[col].dtype
 
-        # Handle datetime specially
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
+        # Determine PyArrow type based on pandas dtype
+        if pd.api.types.is_datetime64_any_dtype(dtype):
             pa_type = pa.timestamp('ns')
+        elif pd.api.types.is_integer_dtype(dtype):
+            pa_type = pa.int64()
+        elif pd.api.types.is_float_dtype(dtype):
+            pa_type = pa.float64()
+        elif pd.api.types.is_bool_dtype(dtype):
+            pa_type = pa.bool_()
+        elif dtype == 'object' or pd.api.types.is_string_dtype(dtype):
+            pa_type = pa.string()
+        else:
+            # Fallback: try automatic conversion, default to string
+            try:
+                pa_type = pa.from_numpy_dtype(dtype)
+            except (pa.ArrowNotImplementedError, pa.ArrowInvalid):
+                pa_type = pa.string()
 
         # Get description for this field
         desc = descriptions.get(col.upper(), '')
@@ -187,7 +200,7 @@ def process_sod_zip(zip_path):
 
 def process_sod_csv(csv_path):
     """
-    Read SOD data from CSV file (2024+ format).
+    Read SOD data from CSV file (1994+ format).
 
     Args:
         csv_path: Path to CSV file
